@@ -1,0 +1,22 @@
+checkout:
+  post:
+    - sed -i 's/<module>lightadmin-tests<\/module>/ /g' pom.xml
+test:
+  override:
+    - mvn install
+  post:
+    - git clone --depth=1 git@github.com:atklab/atklab.github.io.git $CIRCLE_ARTIFACTS/.
+    - rm -rf $CIRCLE_ARTIFACTS/org/lightadmin
+    - mkdir -p $CIRCLE_ARTIFACTS/org/lightadmin
+    - cp -r ${HOME}/.m2/repository/org/lightadmin/* $CIRCLE_ARTIFACTS/org/lightadmin/.
+    - git -C $CIRCLE_ARTIFACTS config user.email "circleci@atklab.com"
+    - git -C $CIRCLE_ARTIFACTS config user.name "CircleCI"
+    - git -C $CIRCLE_ARTIFACTS add .
+    - git -C $CIRCLE_ARTIFACTS commit -m "."
+    - git -C $CIRCLE_ARTIFACTS push origin master
+    - rm -rf $CIRCLE_ARTIFACTS/.git
+    - rm -rf $CIRCLE_ARTIFACTS/*
+general:
+  branches:
+    only:
+      - master
