@@ -49,6 +49,9 @@
             },
             getEditDomainEntityUrl: function(resourceName, entityId) {
                 return this.getDomainEntityUrl(resourceName, entityId) + '/edit';
+            },
+            getCloneDomainEntityUrl: function(resourceName, entityId) {
+                return this.getDomainEntityUrl(resourceName, entityId) + '/clone';
             }
         };
     }());

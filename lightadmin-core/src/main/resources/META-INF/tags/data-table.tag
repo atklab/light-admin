@@ -159,13 +159,16 @@
 
         var viewEntityUrl = ApplicationConfig.getDomainEntityUrl(ApplicationConfig.RESOURCE_NAME, entityId);
         var editEntityUrl = ApplicationConfig.getEditDomainEntityUrl(ApplicationConfig.RESOURCE_NAME, entityId);
+        var cloneEntityUrl = ApplicationConfig.getCloneDomainEntityUrl(ApplicationConfig.RESOURCE_NAME, entityId);
 
         var viewImg = '<light:url value='/images/icons/dark/info.png'/>';
         var editImg = '<light:url value='/images/icons/dark/pencil.png'/>';
+        var cloneImg = '<light:url value='/images/icons/dark/view.png'/>';
         var removeImg = '<light:url value='/images/icons/dark/basket.png'/>';
 
         var html = "<a href='" + viewEntityUrl + "' title='View' class='btn14 mr5'><img src='" + viewImg + "' alt='View'></a>";
         html += "<a href='" + editEntityUrl + "' title='Edit' class='btn14 mr5'><img src='" + editImg + "' alt='Edit'></a>";
+        html += "<a href='" + cloneEntityUrl + "' title='Clone' class='btn14 mr5'><img src='" + cloneImg + "' alt='Clone'></a>";
         html += "<a href='#' title='Remove' class='btn14 mr5 removeBtn' data-entity-id='" + entityId + "'><img src='" + removeImg + "' alt='Remove'></a>";
 
         return html;

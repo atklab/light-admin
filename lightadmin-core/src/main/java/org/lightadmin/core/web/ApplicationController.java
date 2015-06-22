@@ -15,26 +15,30 @@
  */
 package org.lightadmin.core.web;
 
+import java.io.Serializable;
+import java.lang.reflect.Field;
 import org.lightadmin.core.config.LightAdminConfiguration;
 import org.lightadmin.core.config.domain.DomainTypeAdministrationConfiguration;
 import org.lightadmin.core.config.domain.GlobalAdministrationConfiguration;
 import org.lightadmin.core.persistence.repository.DynamicJpaRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.convert.ConversionService;
 import org.springframework.data.mapping.PersistentEntity;
+import static org.springframework.http.HttpStatus.FORBIDDEN;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.mvc.multiaction.NoSuchRequestHandlingMethodException;
-
-import java.io.Serializable;
-
-import static org.springframework.http.HttpStatus.FORBIDDEN;
 import static org.springframework.web.servlet.support.ServletUriComponentsBuilder.fromCurrentContextPath;
 
 @Controller
@@ -124,6 +128,18 @@ public class ApplicationController {
         return "edit-view";
     }
 
+    @RequestMapping(value = "/domain/{domainTypeName}/{entityId}/clone", method = RequestMethod.GET)
+    public String clone(@PathVariable String domainTypeName, @PathVariable String entityId, Model model) {
+        addDomainTypeConfigurationToModel(domainTypeName, model);
+
+        final Object id = cloneEntityOfDomain(entityId, domainTypeName);
+        if (id == null) {
+            return pageNotFound();
+        }
+
+        return redirectTo("/domain/"+domainTypeName+"/"+conversionService.convert(id, String.class)+"/edit");
+    }
+
     @RequestMapping(value = "/domain/{domainTypeName}/{entityId}/edit-dialog", method = RequestMethod.GET)
     public String editDialog(@PathVariable String domainTypeName, @PathVariable String entityId, Model model) {
         edit(domainTypeName, entityId, model);
@@ -157,6 +173,33 @@ public class ApplicationController {
         Serializable id = (Serializable) conversionService.convert(entityId, persistentEntity.getIdProperty().getActualType());
 
         return repository.findOne(id);
+    }
+
+    private Object cloneEntityOfDomain(String entityId, String domainTypeName) {
+        DomainTypeAdministrationConfiguration domainTypeConfiguration = configuration.forEntityName(domainTypeName);
+        DynamicJpaRepository repository = domainTypeConfiguration.getRepository();
+
+        PersistentEntity persistentEntity = domainTypeConfiguration.getPersistentEntity();
+        Serializable id = (Serializable) conversionService.convert(entityId, persistentEntity.getIdProperty().getActualType());
+
+        Object found = repository.findOne(id);
+        
+        if (found!=null) {
+            try {
+                Object newInstance = domainTypeConfiguration.getDomainType().newInstance();
+                BeanUtils.copyProperties(found, newInstance, persistentEntity.getIdProperty().getName());
+                
+                Object saved = repository.saveAndFlush(newInstance);
+                
+                Field idField = persistentEntity.getIdProperty().getField();
+                idField.setAccessible(true);
+                return idField.get(saved);
+            } catch (Throwable t) {
+                throw new RuntimeException(t);
+            }
+        } else {
+            return null;
+        }
     }
 
     private void addDomainTypeConfigurationToModel(String domainTypeName, Model model) {
