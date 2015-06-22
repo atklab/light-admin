@@ -15,8 +15,20 @@
  */
 package org.lightadmin.core.web;
 
+import java.beans.PropertyDescriptor;
 import java.io.Serializable;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.SortedMap;
+import java.util.SortedSet;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import org.apache.commons.beanutils.PropertyUtils;
 import org.lightadmin.core.config.LightAdminConfiguration;
 import org.lightadmin.core.config.domain.DomainTypeAdministrationConfiguration;
 import org.lightadmin.core.config.domain.GlobalAdministrationConfiguration;
@@ -29,6 +41,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.convert.ConversionService;
 import org.springframework.data.mapping.PersistentEntity;
+import org.springframework.data.mapping.PersistentProperty;
 import static org.springframework.http.HttpStatus.FORBIDDEN;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -137,7 +150,7 @@ public class ApplicationController {
             return pageNotFound();
         }
 
-        return redirectTo("/domain/"+domainTypeName+"/"+conversionService.convert(id, String.class)+"/edit");
+        return redirectTo("/domain/" + domainTypeName + "/" + conversionService.convert(id, String.class) + "/edit");
     }
 
     @RequestMapping(value = "/domain/{domainTypeName}/{entityId}/edit-dialog", method = RequestMethod.GET)
@@ -183,17 +196,51 @@ public class ApplicationController {
         Serializable id = (Serializable) conversionService.convert(entityId, persistentEntity.getIdProperty().getActualType());
 
         Object found = repository.findOne(id);
-        
-        if (found!=null) {
+
+        if (found != null) {
             try {
-                Object newInstance = domainTypeConfiguration.getDomainType().newInstance();
+                final Object newInstance = domainTypeConfiguration.getDomainType().newInstance();
                 BeanUtils.copyProperties(found, newInstance, persistentEntity.getIdProperty().getName());
-                
+
+                PropertyDescriptor[] propertyDescriptors = PropertyUtils.getPropertyDescriptors(newInstance);
+
+                for (PropertyDescriptor propertyDescriptor : propertyDescriptors) {
+
+                    if (propertyDescriptor.getReadMethod() != null && propertyDescriptor.getWriteMethod() != null) {
+                        Object value = propertyDescriptor.getReadMethod().invoke(newInstance);
+
+                        Object newValue = null;
+                        try {
+                            if (value instanceof SortedSet) {
+                                newValue = new TreeSet(SortedSet.class.cast(value));
+                            } else if (value instanceof Set) {
+                                newValue = new HashSet(Set.class.cast(value));
+                            } else if (value instanceof SortedMap) {
+                                newValue = new TreeMap(SortedMap.class.cast(value));
+                            } else if (value instanceof Collection) {
+                                newValue = new ArrayList(Collection.class.cast(value));
+                            } else if (value instanceof Map) {
+                                newValue = new HashMap(Map.class.cast(value));
+                            }
+                        } catch (Throwable t) {
+                            if (logger.isWarnEnabled()){
+                                logger.warn("Can't clone "+propertyDescriptor.getName(), t);
+                            }
+                        }
+
+                        if (newValue != null) {
+                            propertyDescriptor.getWriteMethod().invoke(newInstance, newValue);
+                        }
+                    }
+
+                }
+
                 Object saved = repository.saveAndFlush(newInstance);
-                
-                Field idField = persistentEntity.getIdProperty().getField();
+
+                PersistentProperty idProperty = persistentEntity.getIdProperty();
+                Field idField = idProperty.getField();
                 idField.setAccessible(true);
-                return idField.get(saved);
+                return idProperty.usePropertyAccess() ? idProperty.getGetter().invoke(saved) : idField.get(saved);
             } catch (Throwable t) {
                 throw new RuntimeException(t);
             }
