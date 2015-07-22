@@ -1,14 +1,14 @@
 package org.lightadmin.demo.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import org.hibernate.validator.constraints.NotBlank;
-import org.springframework.util.Assert;
-
 import javax.persistence.Entity;
 import javax.persistence.ManyToOne;
+import org.hibernate.validator.constraints.NotBlank;
+import org.lightadmin.core.persistence.support.CloneableEntity;
+import org.springframework.util.Assert;
 
 @Entity
-public class Address extends AbstractEntity {
+public class Address extends AbstractEntity implements CloneableEntity<Address>{
 
     @NotBlank
     private String street;
@@ -55,5 +55,10 @@ public class Address extends AbstractEntity {
 
     public Customer getCustomer() {
         return customer;
+    }
+
+    @Override
+    public Address clone() {
+        return getCopy();
     }
 }

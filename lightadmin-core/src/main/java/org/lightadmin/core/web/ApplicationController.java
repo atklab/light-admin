@@ -33,6 +33,7 @@ import org.lightadmin.core.config.LightAdminConfiguration;
 import org.lightadmin.core.config.domain.DomainTypeAdministrationConfiguration;
 import org.lightadmin.core.config.domain.GlobalAdministrationConfiguration;
 import org.lightadmin.core.persistence.repository.DynamicJpaRepository;
+import org.lightadmin.core.persistence.support.CloneableEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
@@ -196,45 +197,50 @@ public class ApplicationController {
         Serializable id = (Serializable) conversionService.convert(entityId, persistentEntity.getIdProperty().getActualType());
 
         Object found = repository.findOne(id);
-
         if (found != null) {
             try {
-                final Object newInstance = domainTypeConfiguration.getDomainType().newInstance();
-                BeanUtils.copyProperties(found, newInstance, persistentEntity.getIdProperty().getName());
+                Object newInstance = null;
+                if (found instanceof CloneableEntity) {
+                    newInstance = CloneableEntity.class.cast(found).clone();
+                } else {
+                    newInstance = domainTypeConfiguration.getDomainType().newInstance();
 
-                PropertyDescriptor[] propertyDescriptors = PropertyUtils.getPropertyDescriptors(newInstance);
+                    BeanUtils.copyProperties(found, newInstance, persistentEntity.getIdProperty().getName());
 
-                for (PropertyDescriptor propertyDescriptor : propertyDescriptors) {
+                    PropertyDescriptor[] propertyDescriptors = PropertyUtils.getPropertyDescriptors(newInstance);
 
-                    if (propertyDescriptor.getReadMethod() != null && propertyDescriptor.getWriteMethod() != null) {
-                        Object value = propertyDescriptor.getReadMethod().invoke(newInstance);
+                    for (PropertyDescriptor propertyDescriptor : propertyDescriptors) {
 
-                        Object newValue = null;
-                        try {
-                            if (value instanceof SortedSet) {
-                                newValue = new TreeSet(SortedSet.class.cast(value));
-                            } else if (value instanceof Set) {
-                                newValue = new HashSet(Set.class.cast(value));
-                            } else if (value instanceof SortedMap) {
-                                newValue = new TreeMap(SortedMap.class.cast(value));
-                            } else if (value instanceof Collection) {
-                                newValue = new ArrayList(Collection.class.cast(value));
-                            } else if (value instanceof Map) {
-                                newValue = new HashMap(Map.class.cast(value));
+                        if (propertyDescriptor.getReadMethod() != null && propertyDescriptor.getWriteMethod() != null) {
+                            Object value = propertyDescriptor.getReadMethod().invoke(newInstance);
+
+                            Object newValue = null;
+                            try {
+                                if (value instanceof SortedSet) {
+                                    newValue = new TreeSet(SortedSet.class.cast(value));
+                                } else if (value instanceof Set) {
+                                    newValue = new HashSet(Set.class.cast(value));
+                                } else if (value instanceof SortedMap) {
+                                    newValue = new TreeMap(SortedMap.class.cast(value));
+                                } else if (value instanceof Collection) {
+                                    newValue = new ArrayList(Collection.class.cast(value));
+                                } else if (value instanceof Map) {
+                                    newValue = new HashMap(Map.class.cast(value));
+                                }
+                            } catch (Throwable t) {
+                                if (logger.isWarnEnabled()) {
+                                    logger.warn("Can't clone " + propertyDescriptor.getName(), t);
+                                }
                             }
-                        } catch (Throwable t) {
-                            if (logger.isWarnEnabled()){
-                                logger.warn("Can't clone "+propertyDescriptor.getName(), t);
+
+                            if (newValue != null) {
+                                propertyDescriptor.getWriteMethod().invoke(newInstance, newValue);
                             }
                         }
 
-                        if (newValue != null) {
-                            propertyDescriptor.getWriteMethod().invoke(newInstance, newValue);
-                        }
                     }
-
                 }
-
+                
                 Object saved = repository.saveAndFlush(newInstance);
 
                 PersistentProperty idProperty = persistentEntity.getIdProperty();
