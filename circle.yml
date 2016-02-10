@@ -1,6 +1,7 @@
 checkout:
   post:
     - sed -i 's/<module>lightadmin-tests<\/module>/ /g' pom.xml
+    - sed -i 's/<module>lightadmin-sandbox<\/module>/ /g' pom.xml
 test:
   override:
     - mvn install
