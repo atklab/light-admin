@@ -13,11 +13,12 @@
 
 <c:set var="dialogMode" value="${dialogMode eq null ? false : true}"/>
 <c:set var="fileReferenceConstraints" value='${light:findAnnotationByName(attributeMetadata, "org.lightadmin.api.config.annotation.FileReference$Constraints")}' />
+<c:set var="notNull" value='${light:findAnnotationByName(attributeMetadata, "javax.validation.constraints.NotNull")}' />
 <c:if test="${fileReferenceConstraints ne null}">
     <c:set var="extensions" value="${light:getAnnotationValue(fileReferenceConstraints, 'value')}" />
     <c:set var="limit" value="${light:getAnnotationValue(fileReferenceConstraints, 'limit')}" />
 </c:if>
-<div id="${attributeMetadata.name}-file-container${dialogMode ? '-dialog' : ''}" style="text-align: left;" data-extensions="${extensions ne null ? extensions : 'jpg,jpeg,png'}" data-limit="${limit ne null ? limit : '10'}">
+<div id="${attributeMetadata.name}-file-container${dialogMode ? '-dialog' : ''}" style="text-align: left;" data-extensions="${extensions ne null ? extensions : 'jpg,jpeg,png'}" data-limit="${limit ne null ? limit : '10'}" data-mandatory="${notNull ne null ? true : false}">
     <div class="uploader" style="z-index: 1;">
         <input type="hidden" class="fileInput" id="${attributeMetadata.name}${dialogMode ? '-dialog' : ''}"
                name="${attributeMetadata.name}" size="24" style="opacity: 0;">

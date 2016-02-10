@@ -34,41 +34,50 @@ function FileUploaderController(resourceName, form, attr) {
     var picture_container_id = field_name + '-picture-container';
 
     function removeFile(entityId) {
-        jConfirm('Are you sure you want to remove this file from server? It won\'t be recoverable!', 'Confirmation Dialog', function (r) {
-            if (r) {
-                $.ajax({
-                    type: 'DELETE',
-                    url: ApplicationConfig.getDomainEntityFilePropertyRestUrl(resourceName, entityId, attr),
-                    contentType: 'application/json',
-                    dataType: 'json',
-                    success: function () {
-                        $(editor).val('');
-                        $('#' + picture_container_id).remove();
-                        remove_button.hide();
-                        add_button.show();
 
-                        if (uploader.files.length > 0) {
-                            $.each(uploader.files, function () {
-                                uploader.removeFile(this);
-                            });
-                            uploader.refresh();
-                        }
+        var success = function () {
+            $(editor).val('');
+            $('#' + picture_container_id).remove();
+            remove_button.hide();
+            add_button.show();
 
-                        $('span.filename', uploader_container).html('No file selected');
-                    },
-                    statusCode: {
-                        409: function (jqXHR) {
-                            var errorMessage = $.parseJSON(jqXHR.responseText)['message'];
-                            jAlert(errorMessage, 'Remove operation failure');
-                        }
-                    }
+            if (uploader.files.length > 0) {
+                $.each(uploader.files, function () {
+                    uploader.removeFile(this);
                 });
+                uploader.refresh();
             }
-        });
+
+            $('span.filename', uploader_container).html('No file selected');
+        };
+
+        if (!plupload_container.data('mandatory')) {
+
+
+            jConfirm('Are you sure you want to remove this file from server? It won\'t be recoverable!', 'Confirmation Dialog', function (r) {
+                if (r) {
+                    $.ajax({
+                        type: 'DELETE',
+                        url: ApplicationConfig.getDomainEntityFilePropertyRestUrl(resourceName, entityId, attr),
+                        contentType: 'application/json',
+                        dataType: 'json',
+                        success: success,
+                        statusCode: {
+                            409: function (jqXHR) {
+                                var errorMessage = $.parseJSON(jqXHR.responseText)['message'];
+                                jAlert(errorMessage, 'Remove operation failure');
+                            }
+                        }
+                    });
+                }
+            });
+        } else {
+            success();
+        }
     }
 
     function loadFilePropertyValue(resourceName, entityId, propertyName) {
-        var filePropertyValue = { file_exists: false };
+        var filePropertyValue = {file_exists: false};
         if (entityId == null || entityId == 0) {
             return filePropertyValue;
         }
@@ -85,7 +94,7 @@ function FileUploaderController(resourceName, form, attr) {
     }
 
     return {
-        loadFile: function(entityId) {
+        loadFile: function (entityId) {
             return loadFilePropertyValue(resourceName, entityId, attr);
         },
         selectFile: function (entityId, attr_value) {
