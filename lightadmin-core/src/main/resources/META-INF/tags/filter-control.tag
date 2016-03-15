@@ -42,6 +42,6 @@
                                        cssClass="${cssClass}" modalViewEnabled="${false}"/>
     </jsp:attribute>
     <jsp:attribute name="mapEditControl">
-        <jsp:text>Map is not supported</jsp:text>
+        <light-jsp:simple-edit-control attributeMetadata="${attributeMetadata}" cssClass="${cssClass}"/>
     </jsp:attribute>
 </light:edit-control-dispatcher>

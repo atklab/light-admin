@@ -116,7 +116,11 @@ public class SpecificationCreator {
             if (isOfDateTimeType(persistentProperty)) {
                 return dateAttributePredicate(attributeName, parameterValue);
             }
-
+            
+            if (isMapType(persistentProperty)){
+                return mapAttributePredicate(attributeName, parameterValue);                
+            }
+            
             return stringAttributePredicate(attributeName, parameterValue);
         }
 
@@ -128,6 +132,14 @@ public class SpecificationCreator {
             } catch (IllegalArgumentException e) {
                 return builder.and();
             }
+        }
+
+        private Predicate mapAttributePredicate(final String attributeName, final String parameterValue) {
+            if (isNotBlank(parameterValue)) {
+                return builder.like(builder.lower(root.<Object, Object, String>joinMap(attributeName).value()), "%" + parameterValue.toLowerCase() + "%");
+            }
+
+            return builder.and();
         }
 
         private Predicate stringAttributePredicate(final String attributeName, final String parameterValue) {
@@ -215,6 +227,10 @@ public class SpecificationCreator {
 
         private boolean isNumericType(final PersistentProperty attribute) {
             return PersistentPropertyType.forPersistentProperty(attribute) == NUMBER_INTEGER || PersistentPropertyType.forPersistentProperty(attribute) == NUMBER_FLOAT;
+        }
+
+        private boolean isMapType(final PersistentProperty attribute) {
+            return PersistentPropertyType.forPersistentProperty(attribute) == MAP;
         }
 
         private DomainTypeBasicConfiguration domainTypeConfigurationFor(final Class<?> domainType) {
